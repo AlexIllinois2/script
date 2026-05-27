@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+set -e
+shopt -s dotglob
+
+# 获取项目目录
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ! 使用目录名作为软件名
+# 比如项目在 /home/v/project/config/nvim，则默认名为 nvim
+SOFTWARE_NAME="${SOFTWARE_NAME:-$(basename "$PROJECT_DIR")}"
+
+CONFIG_DIR="${CONFIG_DIR:-$HOME/.config}"
+DATA_DIR="${DATA_DIR:-$HOME/.local/share}"
+BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
+
+
+install() {
+    deploy config "$CONFIG_DIR"
+    deploy share "$DATA_DIR"
+    deploy bin "$BIN_DIR"
+}
+
+uninstall() {
+    destroy config "$CONFIG_DIR"
+    destroy share "$DATA_DIR"
+    destroy bin "$BIN_DIR"
+}
+
+deploy() {
+    # 传入两个文件夹, 将第一个文件夹下所有文件(夹)链接到第二个文件夹下
+    # 传入两个文件, 将第一个文件链接到第二个文件
+    local ITEM="$1"
+    local TARGET="$2"
+
+    each_opt "$ITEM" "$TARGET" "1"
+}
+
+destroy() {
+    local ITEM="$1"
+    local TARGET="$2"
+    
+    each_opt "$ITEM" "$TARGET" "0"
+}
+
+each_opt() {
+    local ITEM="$PROJECT_DIR/$1"
+    local TARGET="$2"
+    local OPT="$3"
+
+    if [[ -f "$ITEM" ]]; then
+        opt "$ITEM" "$TARGET" "$OPT"
+        return
+    fi
+
+    mkdir -p "$TARGET"
+    for item in "$ITEM"/*; do
+        opt "$item" "$TARGET" "$OPT"
+    done
+}
+
+opt() {
+    local ITEM="$1"
+    local TARGET="$2/$(basename $ITEM)"
+    local OPT="$3"
+
+    if [[ "$OPT" == "1" ]]; then
+        local prefix="ln -sfT '$ITEM'"
+    else
+        local prefix="rm -f"
+    fi
+    
+    local cmd="$prefix '$TARGET'"
+    #echo "$cmd"
+    eval "$cmd"
+}
+
+if [[ "$1" == "-u" ]]; then
+    echo "Uninstalling $SOFTWARE_NAME from $PROJECT_DIR"
+    uninstall
+    echo "$SOFTWARE_NAME uninstall successfully"
+    exit 0
+elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "Usage: $0 [-i | -u]"
+    echo "  [-i]: Install $SOFTWARE_NAME"
+    echo "  -u: Uninstall $SOFTWARE_NAME"
+    exit 0
+elif [[ -z "$1" || "$1" == "-i" ]]; then
+    if [[ -L "$CONFIG_DIR" || -L "$DATA_DIR" || -L "$BIN_TARGET" ]]; then
+        echo "some file already exist, please uninstall first"
+        exit 0
+        #uninstall
+    fi
+
+    echo "Installing $SOFTWARE_NAME from $PROJECT_DIR"
+    install
+    echo "Done! Run '$SOFTWARE_NAME' to start"
+    exit 0
+fi
