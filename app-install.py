@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-app-installer.py — 通用应用安装器
+app-install.py — 通用应用安装器
 
 将 tar.gz 应用包安装到 ~/.local/app/<app_name>/，
 自动生成 .desktop、.service 文件并创建相关软链接。
